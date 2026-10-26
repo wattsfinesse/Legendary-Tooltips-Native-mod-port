@@ -1,0 +1,8 @@
+{
+  "version": "0.1.0",
+  "enabled": true,
+  "border_color": "#d8b65c",
+  "background_color": "#17191f",
+  "shadow": true,
+  "border_radius": 5
+}
