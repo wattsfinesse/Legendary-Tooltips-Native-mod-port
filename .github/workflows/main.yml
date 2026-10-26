@@ -1,0 +1,68 @@
+name: Build Legendary Tooltips Native
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-android-arm64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout mod source
+        uses: actions/checkout@v4
+
+      - name: Checkout matching LeviLamroid source
+        uses: actions/checkout@v4
+        with:
+          repository: spygamingog/LeviLamroid
+          # Pin to the source revision supplied with this port project.
+          ref: f988a23c61889fda3ece324db1994077c5b4ed09
+          path: LeviLamroid-main
+          persist-credentials: false
+
+      - name: Set up Android NDK r28c
+        id: setup-ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r28c
+          add-to-path: false
+
+      - name: Configure build environment
+        shell: bash
+        run: |
+          echo "LEVILAMROID_ROOT=${GITHUB_WORKSPACE}/LeviLamroid-main" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_HOME=${ANDROID_NDK_HOME:-${ANDROID_HOME}/ndk/28.2.13676358}" >> "$GITHUB_ENV"
+          cmake --version
+          python3 --version
+
+      - name: Build and package .levipack
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f CMakeLists.txt && -f package.sh ]]; then
+            PROJECT_DIR="."
+          elif [[ -f LegendaryTooltipsNative/CMakeLists.txt && -f LegendaryTooltipsNative/package.sh ]]; then
+            PROJECT_DIR="LegendaryTooltipsNative"
+          else
+            echo "Could not find LegendaryTooltipsNative/CMakeLists.txt and package.sh" >&2
+            exit 1
+          fi
+          chmod +x "${PROJECT_DIR}/package.sh"
+          LEVILAMROID_ROOT="${GITHUB_WORKSPACE}/LeviLamroid-main" \
+          ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-${ANDROID_HOME}/ndk/28.2.13676358}" \
+            "${PROJECT_DIR}/package.sh"
+
+      - name: Upload .levipack artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LegendaryTooltipsNative-Android-arm64
+          path: |
+            LegendaryTooltipsNative/dist/*.levipack
+            dist/*.levipack
+          if-no-files-found: error
+          retention-days: 14
