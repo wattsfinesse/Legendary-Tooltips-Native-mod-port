@@ -35,8 +35,35 @@ jobs:
       - name: Configure build environment
         shell: bash
         run: |
+          set -euo pipefail
           echo "LEVILAMROID_ROOT=${GITHUB_WORKSPACE}/LeviLamroid-main" >> "$GITHUB_ENV"
-          echo "ANDROID_NDK_HOME=${ANDROID_NDK_HOME:-${ANDROID_HOME}/ndk/28.2.13676358}" >> "$GITHUB_ENV"
+
+          # setup-ndk may install r28c into the runner tool cache while the hosted
+          # image already has r27 installed under ANDROID_NDK_HOME. Do not reuse r27.
+          NDK_TOOLCHAIN=""
+          while IFS= read -r candidate; do
+            case "$candidate" in
+              *28.2.13676358*|*android-ndk-r28c*)
+                NDK_TOOLCHAIN="$candidate"
+                break
+                ;;
+            esac
+          done < <(find "${RUNNER_TOOL_CACHE:-/opt/hostedtoolcache}" "${ANDROID_HOME:-/usr/local/lib/android/sdk}/ndk" \
+                    -type f -path '*/build/cmake/android.toolchain.cmake' -print 2>/dev/null || true)
+
+          if [[ -z "$NDK_TOOLCHAIN" ]]; then
+            echo "Could not locate the Android NDK r28c toolchain after setup-ndk." >&2
+            echo "Available NDK toolchains:" >&2
+            find "${RUNNER_TOOL_CACHE:-/opt/hostedtoolcache}" "${ANDROID_HOME:-/usr/local/lib/android/sdk}/ndk" \
+              -type f -path '*/build/cmake/android.toolchain.cmake' -print 2>/dev/null || true
+            exit 1
+          fi
+
+          NDK_ROOT="${NDK_TOOLCHAIN%/build/cmake/android.toolchain.cmake}"
+          NDK_ROOT="${NDK_ROOT%/build/cmake}"
+          echo "ANDROID_NDK_HOME=${NDK_ROOT}" >> "$GITHUB_ENV"
+          echo "Using Android NDK: ${NDK_ROOT}"
+          test -f "${NDK_ROOT}/build/cmake/android.toolchain.cmake"
           cmake --version
           python3 --version
 
@@ -53,8 +80,10 @@ jobs:
             exit 1
           fi
           chmod +x "${PROJECT_DIR}/package.sh"
+          echo "Building with ANDROID_NDK_HOME=${ANDROID_NDK_HOME}"
+          test -f "${ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake"
           LEVILAMROID_ROOT="${GITHUB_WORKSPACE}/LeviLamroid-main" \
-          ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-${ANDROID_HOME}/ndk/28.2.13676358}" \
+          ANDROID_NDK_HOME="${ANDROID_NDK_HOME}" \
             "${PROJECT_DIR}/package.sh"
 
       - name: Upload .levipack artifact
