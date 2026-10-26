@@ -1,0 +1,17 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Legendary Tooltips Native (Experimental)",
+    "description": "Clean-room tooltip frame/background styling prototype for LeviLamroid; Bedrock 1.26.52.3 only.",
+    "version": [0, 1, 0],
+    "uuid": "2af2c50e-18f7-4e8d-92a6-420ba8a0e2c5",
+    "entry": "liblegendary_tooltips_native.so",
+    "type": "native_mod"
+  },
+  "dependencies": [
+    {
+      "name": "LeviLamroid",
+      "version": ">=1.0.0"
+    }
+  ]
+}
